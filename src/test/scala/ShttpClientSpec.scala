@@ -1,30 +1,50 @@
 import org.scalatest.flatspec.AnyFlatSpec
-import shttp.ShttpClient
+import shttp.{ShttpClient, ShttpHeaders}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class ShttpClientSpec extends AnyFlatSpec {
 
-  "SHttpClient.HEAD()" should "return only headers" in {
+  "SHttpClient.HEADAsync()" should "return only headers" in {
+    val shttpHeadersFuture = Await.result(ShttpClient().HEADAsync(), ofSeconds())
+    assert(shttpHeadersFuture.isInstanceOf[ShttpHeaders])
+  }
 
+  "SHttpClient.GETAsync()" should "return HTTResponse" in {
+    val httpResponse = Await.result(ShttpClient().GETAsync(), ofSeconds())
+    assert(httpResponse.body().length > 0)
+  }
+
+  "SHttpClient.GETMultiAsync()" should "return multiple HTTResponseS" in {
+    val httpResponses = Await.result(ShttpClient().GETMultiAsync(
+                                       Seq("https://www.google.com", "https://httpbin.org/get")
+                                     ),
+                                     ofSeconds())
+
+    assert(httpResponses.size == 2)
+    assert(httpResponses.head.body().contains("<title>Google</title>"))
+    assert(httpResponses.last.body().contains("\"Host\": \"httpbin.org\""))
+
+  }
+
+  "SHttpClient.HEAD()" should "return only headers" in {
     val shttpHeaders = ShttpClient().HEAD()
 
     assert(shttpHeaders.headers.nonEmpty)
-    assert(
-      shttpHeaders.getHeader("access-control-allow-credentials")._2.toBoolean
-    )
+    assert(shttpHeaders.getHeader("access-control-allow-credentials")._2.toBoolean)
     assert(!shttpHeaders.headerExists("access-control-allow-credentials123"))
   }
 
   "SHttpClient.GET()" should "return HTTResponse" in {
-
     val httpResponse = ShttpClient().GET()
     assert(httpResponse.body().length > 0)
   }
 
   "SHttpClient.GETMulti()" should "return multiple HTTResponseS" in {
-    val httpResponses =
-      ShttpClient().GETMulti(
-        Seq("http://google.com", "https://httpbin.org/get")
-      )
+    val httpResponses = ShttpClient().GETMulti(
+      Seq("http://google.com", "https://httpbin.org/get")
+    )
 
     assert(httpResponses.size > 1)
   }
@@ -36,9 +56,7 @@ class ShttpClientSpec extends AnyFlatSpec {
     data = data :+ ("password", "demo")
     data = data :+ ("custom", "secret")
 
-    val httpResponse =
-      ShttpClient().POSTFormData("http://httpbin.org/post", data)
-
+    val httpResponse = ShttpClient().POSTFormData("http://httpbin.org/post", data)
     assert(httpResponse.statusCode() === 200)
   }
 
@@ -53,5 +71,9 @@ class ShttpClientSpec extends AnyFlatSpec {
     )
 
     assert(httpResponse.statusCode() === 200)
+  }
+
+  private def ofSeconds(seconds: String = "5 seconds"): Duration = {
+    Duration(seconds)
   }
 }

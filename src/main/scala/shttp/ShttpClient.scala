@@ -7,6 +7,8 @@ import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 // https://users.scala-lang.org/t/how-to-add-a-method-to-an-case-class-instance/4313/4
 // https://stackoverflow.com/questions/27695325/scala-case-class-put-methods-in-companion-object
@@ -15,8 +17,7 @@ import scala.collection.mutable
   * @param followRedirects         - One of values of java.net.http.Redirect
   * @param connectTimeoutInSeconds - java.time.Duration.ofSeconds(connectTimeoutInSeconds)
   */
-case class ShttpClient(followRedirects: String = "NEVER",
-                       connectTimeoutInSeconds: Long = 3000) {
+case class ShttpClient(followRedirects: String = "NEVER", connectTimeoutInSeconds: Long = 3000) {
 
   private val postContentType = "application/x-www-form-urlencoded"
   private val jsonContentType = "application/json"
@@ -31,6 +32,10 @@ case class ShttpClient(followRedirects: String = "NEVER",
       .build()
 
     client
+  }
+
+  def HEADAsync(uri: String = "http://httpbin.org"): Future[ShttpHeaders] = {
+    Future(HEAD(uri))
   }
 
   def HEAD(uri: String = "http://httpbin.org"): ShttpHeaders = {
@@ -63,6 +68,12 @@ case class ShttpClient(followRedirects: String = "NEVER",
     ShttpHeaders(buildHeaders().toSeq)
   }
 
+  def GETAsync(uri: String = "http://httpbin.org/get",
+               headers: Seq[(String, String)] = Seq()): Future[HttpResponse[String]] = {
+
+    Future(GET(uri))
+  }
+
   def GET(uri: String = "http://httpbin.org/get",
           headers: Seq[(String, String)] = Seq()): HttpResponse[String] = {
 
@@ -72,6 +83,16 @@ case class ShttpClient(followRedirects: String = "NEVER",
       .build()
 
     client.send(request, BodyHandlers.ofString())
+  }
+
+  def GETMultiAsync(uris: Seq[String]): Future[Seq[HttpResponse[String]]] = {
+    val futures = for (uri <- uris) yield {
+      Future {
+        GET(uri)
+      }
+    }
+
+    Future.sequence(futures)
   }
 
   def GETMulti(uris: Seq[String]): Seq[HttpResponse[String]] = {
@@ -89,10 +110,7 @@ case class ShttpClient(followRedirects: String = "NEVER",
     httpResponses
   }
 
-  def POSTFormData(
-    uri: String,
-    data: Seq[(String, String)] = Seq()
-  ): HttpResponse[String] = {
+  def POSTFormData(uri: String, data: Seq[(String, String)] = Seq()): HttpResponse[String] = {
 
     val fields = (for ((k, v) <- data) yield k + "=" + v).mkString("&")
     val bodyPublisher = HttpRequest.BodyPublishers.ofString(fields)
