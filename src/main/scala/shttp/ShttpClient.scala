@@ -122,7 +122,6 @@ case class ShttpClient(followRedirects: String = "NEVER", connectTimeoutInSecond
       .header("Content-Type", postContentType)
       .build()
 
-    import java.net.http.HttpResponse
     client.send(request, HttpResponse.BodyHandlers.ofString)
   }
 
