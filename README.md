@@ -1,6 +1,6 @@
 This is based on Java SE 9/11 HTTP client.  
 
-Currently these methods are functional. Aysnc methods added for HEAD, GET & GETMulti.
+Currently these methods are functional. Async methods added for HEAD, GET & GETMulti.
 
 - HEAD
 - GET
